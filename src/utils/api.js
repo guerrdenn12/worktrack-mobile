@@ -16,6 +16,9 @@ const REVERSE_MAP = Object.fromEntries(
   Object.entries(TABLE_MAP).map(([k, v]) => [v, k])
 );
 
+// All API calls go to the web app's Netlify functions
+const API_BASE = 'https://app.worktracksmb.com'
+
 // Session token management
 function getSessionToken() {
   return localStorage.getItem('worktrack_session_token') || '';
@@ -53,7 +56,7 @@ export async function pullFromServer(companyCode) {
   if (!code) return false;
 
   try {
-    const res = await fetch(`/api/company/data?code=${code}`, {
+    const res = await fetch(`${API_BASE}/api/company/data?code=${code}`, {
       headers: authHeaders(),
     });
 
@@ -91,7 +94,7 @@ export async function pushToServer(companyCode) {
       data[serverKey] = JSON.parse(localStorage.getItem(localKey) || '[]');
     });
 
-    const res = await fetch('/api/company/sync', {
+    const res = await fetch(`${API_BASE}/api/company/sync`, {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({ companyCode: code, data }),
@@ -122,7 +125,7 @@ export function scheduleSync() {
 // Auth: login with company code + PIN
 export async function serverLogin(companyCode, pin) {
   try {
-    const res = await fetch('/api/company/auth', {
+    const res = await fetch(`${API_BASE}/api/company/auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ companyCode, pin }),
@@ -143,7 +146,7 @@ export async function serverLogin(companyCode, pin) {
 // Create company on server
 export async function createCompany(licenseKey, companyName) {
   try {
-    const res = await fetch('/api/company/create', {
+    const res = await fetch(`${API_BASE}/api/company/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ licenseKey, companyName }),

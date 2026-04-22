@@ -20,6 +20,8 @@ html, body {
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   overscroll-behavior: none;
 }
 
@@ -35,11 +37,219 @@ input, select, textarea {
   font-family: inherit;
 }
 
-a {
-  color: inherit;
-}
+a { color: inherit; }
 
 #root {
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+/* ─── Login page ─────────────────────────────────────────────────────────── */
+.login-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #f7f8fc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5vh 5vw 4vh;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 4vh;
+}
+
+.login-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.login-logo-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f5a623, #e8951a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.login-logo {
+  font-size: clamp(28px, 7vw, 42px);
+  font-weight: 800;
+  color: #1a1a2e;
+  letter-spacing: -1px;
+}
+.login-logo span { color: #f5a623; }
+
+.login-tagline {
+  font-size: clamp(13px, 3.5vw, 18px);
+  color: #888;
+  margin: 4px 0 0;
+}
+
+.login-tabs {
+  display: flex;
+  background: #fff;
+  border-radius: 14px;
+  padding: 5px;
+  margin-bottom: 3vh;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  width: 100%;
+  max-width: 500px;
+}
+
+.login-tab {
+  flex: 1;
+  padding: clamp(12px, 2.5vw, 16px) 0;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font-size: clamp(14px, 3.8vw, 18px);
+  font-weight: 600;
+  color: #888;
+  cursor: pointer;
+}
+
+.login-tab--active {
+  background: #1a1a2e;
+  color: #fff;
+  position: relative;
+}
+.login-tab--active::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 20px; height: 3px;
+  background: #f5a623;
+  border-radius: 2px;
+}
+
+.login-form {
+  width: 100%;
+  max-width: 500px;
+}
+
+.login-input {
+  width: 100%;
+  padding: clamp(14px, 3vw, 20px) clamp(14px, 3vw, 20px);
+  border-radius: 14px;
+  border: 1.5px solid #e5e7eb;
+  font-size: clamp(16px, 4vw, 20px);
+  margin-bottom: 14px;
+  background: #fff;
+  outline: none;
+}
+
+.pin-label {
+  font-size: clamp(15px, 4vw, 20px);
+  font-weight: 600;
+  color: #444;
+  text-align: center;
+  margin-bottom: 2vh;
+}
+
+.pin-display {
+  display: flex;
+  justify-content: center;
+  gap: clamp(12px, 3vw, 20px);
+  margin-bottom: 3vh;
+}
+
+.pin-dot {
+  width: clamp(18px, 4.5vw, 28px);
+  height: clamp(18px, 4.5vw, 28px);
+  border-radius: 50%;
+  border: 2.5px solid #d1d5db;
+  background: transparent;
+}
+
+.pin-dot--filled {
+  background: #1a1a2e;
+  border-color: #1a1a2e;
+}
+
+/* Keypad: keys fill the full available width, square-ish */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(10px, 2.5vw, 18px);
+  margin-bottom: 2vh;
+}
+
+.keypad-key {
+  /* Height matches the calculated key width so keys feel substantial */
+  height: clamp(72px, calc((100vw - 10vw - 10vw - 5vw) / 3), 130px);
+  border-radius: 16px;
+  border: none;
+  background: #fff;
+  font-size: clamp(24px, 6vw, 40px);
+  font-weight: 600;
+  color: #1a1a2e;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keypad-key--empty {
+  background: transparent;
+  box-shadow: none;
+  cursor: default;
+}
+
+.login-btn {
+  width: 100%;
+  padding: clamp(16px, 3.5vw, 22px);
+  background: #f5a623;
+  border: none;
+  border-radius: 14px;
+  font-size: clamp(17px, 4.5vw, 22px);
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+}
+
+.login-error {
+  color: #e53e3e;
+  font-size: clamp(13px, 3vw, 16px);
+  text-align: center;
+  margin: -8px 0 12px;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #bbb;
+  font-size: 14px;
+  margin: 20px 0;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.google-btn {
+  width: 100%;
+  padding: clamp(14px, 3vw, 18px);
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 14px;
+  font-size: clamp(15px, 4vw, 18px);
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

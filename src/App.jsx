@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import LicenseGate from './components/LicenseGate';
 import Login from './components/Login';
 import BottomNav from './components/BottomNav';
+import InstallBanner from './components/InstallBanner';
 import Home from './pages/Home';
 import Clock from './pages/Clock';
 import Schedule from './pages/Schedule';
@@ -36,11 +36,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <LicenseGate>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </LicenseGate>
+      <AuthProvider>
+        <AppRoutes />
+        {/* InstallBanner lives outside auth so it shows on the login screen too */}
+        <InstallBanner />
+      </AuthProvider>
     </BrowserRouter>
   );
 }

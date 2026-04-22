@@ -51,6 +51,6 @@ const styles = {
     color: '#aaa', textDecoration: 'none', minHeight: 60,
     fontSize: 10, fontWeight: 500,
   },
-  tabActive: { color: '#1a1a2e' },
+  tabActive: { color: '#f5a623' },
   label: { fontSize: 10, fontWeight: 600 },
 };
