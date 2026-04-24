@@ -12,6 +12,7 @@ export default function MobileHeader({ title }) {
           {companyName && <div style={styles.company}>{companyName}</div>}
         </div>
       </div>
+      {title && <div style={styles.title}>{title}</div>}
       <div style={styles.right}>
         <div style={styles.avatar}>
           {currentEmployee?.name ? currentEmployee.name[0].toUpperCase() : 'U'}
@@ -41,6 +42,7 @@ const styles = {
   logoText: { display: 'flex', flexDirection: 'column' },
   appName: { fontSize: 16, fontWeight: 800, letterSpacing: '-0.5px', color: '#1a1a2e', lineHeight: 1.1 },
   company: { fontSize: 11, color: '#9ca3af', marginTop: 1 },
+  title: { fontSize: 15, fontWeight: 700, color: '#1a1a2e', flex: 1, textAlign: 'center' },
   right: {},
   avatar: {
     width: 34, height: 34, borderRadius: '50%',
