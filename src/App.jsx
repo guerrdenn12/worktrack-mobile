@@ -29,6 +29,9 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <BottomNav />
+      {/* Only render after auth — the fixed-bottom banner was overlapping the
+          Sign In button on the login screen, blocking first-visit login. */}
+      <InstallBanner />
     </div>
   );
 }
@@ -38,8 +41,6 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
-        {/* InstallBanner lives outside auth so it shows on the login screen too */}
-        <InstallBanner />
       </AuthProvider>
     </BrowserRouter>
   );
