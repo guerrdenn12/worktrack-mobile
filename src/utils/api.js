@@ -5,6 +5,8 @@ const TABLE_MAP = {
   'worktrack_tenants': 'tenants',
   'worktrack_employees': 'employees',
   'worktrack_time_entries': 'time_entries',
+  'worktrack_schedules': 'schedules',
+  'worktrack_time_off': 'time_off',
   'worktrack_clients': 'clients',
   'worktrack_projects': 'projects',
   'worktrack_project_assignments': 'project_assignments',
