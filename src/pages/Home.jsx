@@ -15,7 +15,7 @@ function fmtTime(iso) {
 }
 
 export default function Home() {
-  const { currentEmployee, currentTenant, companyName, logout } = useAuth();
+  const { currentEmployee, currentTenant, companyName } = useAuth();
   const [todayHours, setTodayHours] = useState(0);
   const [weekHours, setWeekHours] = useState(0);
   const [isClockedIn, setIsClockedIn] = useState(false);
@@ -114,8 +114,6 @@ export default function Home() {
             </div>
           </div>
         )}
-
-        <button style={styles.logoutBtn} onClick={logout}>Sign Out</button>
       </div>
     </div>
   );
@@ -149,10 +147,4 @@ const styles = {
   },
   shiftLabel: { fontSize: 11, fontWeight: 700, color: '#f5a623', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
   shiftTime: { fontSize: 16, fontWeight: 600, color: '#1a1a2e' },
-  logoutBtn: {
-    width: '100%', padding: '14px', background: 'transparent',
-    border: '1.5px solid #e5e7eb', borderRadius: 12,
-    fontSize: 15, fontWeight: 600, color: '#888', cursor: 'pointer',
-    marginTop: 8,
-  },
 };

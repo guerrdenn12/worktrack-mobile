@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Home, Clock, Calendar, Umbrella, Users } from 'lucide-react';
+import { Home, Clock, Calendar, Umbrella, Users, User } from 'lucide-react';
 
 export default function BottomNav() {
   const { currentEmployee } = useAuth();
@@ -13,6 +13,7 @@ export default function BottomNav() {
     { to: '/schedule', icon: Calendar, label: 'Schedule' },
     { to: '/time-off', icon: Umbrella, label: 'Time Off' },
     ...(isManager ? [{ to: '/team', icon: Users, label: 'Team' }] : []),
+    { to: '/profile', icon: User, label: 'Profile' },
   ];
 
   return (

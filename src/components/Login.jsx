@@ -43,7 +43,7 @@ export default function Login() {
           <div className="login-logo-icon">📋</div>
           <div className="login-logo">Work<span>Track</span></div>
         </div>
-        <p className="login-tagline">Manager &amp; Admin Access</p>
+        <p className="login-tagline">Clock in &amp; manage shifts</p>
       </div>
 
       <div className="login-tabs">
