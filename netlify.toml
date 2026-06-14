@@ -6,3 +6,20 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# ── Security headers (audit 2026-06-14) ──────────────────────────────────────
+# geolocation=(self) keeps GPS clock-in working (matches the browser default;
+# it does NOT disable geolocation). CSP deferred to a browser-tested pass.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

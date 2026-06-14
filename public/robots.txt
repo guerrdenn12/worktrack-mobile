@@ -1,0 +1,3 @@
+# WorkTrack mobile app — a private application, not for search indexing.
+User-agent: *
+Disallow: /
