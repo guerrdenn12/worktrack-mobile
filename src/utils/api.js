@@ -86,7 +86,7 @@ export async function pullFromServer(companyCode) {
 }
 
 // Push all localStorage data to server
-export async function pushToServer(companyCode) {
+export async function pushToServer(companyCode, { keepalive = false } = {}) {
   const code = companyCode || getCompanyCode();
   if (!code) return false;
 
@@ -100,6 +100,8 @@ export async function pushToServer(companyCode) {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({ companyCode: code, data }),
+      // keepalive lets the request complete even if the page is unloading
+      keepalive,
     });
 
     if (res.status === 401) {
@@ -117,11 +119,39 @@ export async function pushToServer(companyCode) {
 
 // Debounced sync — waits 2s after last change before pushing
 let syncTimer = null;
+let pendingSync = false;
 export function scheduleSync() {
+  pendingSync = true;
   if (syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(() => {
+    syncTimer = null;
+    pendingSync = false;
     pushToServer();
   }, 2000);
+}
+
+// Flush a pending debounced sync immediately. Without this, a clock-in/out
+// made within the 2s debounce window is lost if the app is backgrounded or
+// closed before the timer fires — a constant risk on mobile, where switching
+// apps or locking the phone mid-action is routine.
+function flushSync({ keepalive = false } = {}) {
+  if (!pendingSync) return;
+  if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }
+  pendingSync = false;
+  pushToServer(undefined, { keepalive });
+}
+
+// Flush on app lifecycle transitions. visibilitychange→hidden is the reliable
+// "going to background" signal on mobile PWAs — the page stays alive, so a
+// normal fetch completes. pagehide covers tab close / navigation away, where
+// keepalive lets the request outlive the unload (best-effort: keepalive bodies
+// are capped at 64KB, so it's reserved for the true-unload case).
+if (typeof document !== 'undefined' && !window.__wtSyncFlushBound) {
+  window.__wtSyncFlushBound = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushSync({ keepalive: false });
+  });
+  window.addEventListener('pagehide', () => flushSync({ keepalive: true }));
 }
 
 // Auth: login with company code + PIN
