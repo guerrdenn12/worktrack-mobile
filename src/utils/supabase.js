@@ -1,8 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-export const supabase = supabaseUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+// Supabase removed. Mobile is an employee-only PIN app on the shared Neon
+// backend (app.worktracksmb.com/api/*) — there is no email/SSO login here, so
+// there is nothing for Supabase to do. AuthContext's email/Google paths are
+// guarded by `if (supabase)` and become no-ops with this null export.
+export const supabase = null
