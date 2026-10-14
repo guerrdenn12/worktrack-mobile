@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import BottomNav from './components/BottomNav';
-import InstallBanner from './components/InstallBanner';
+import InstallPrompt from './components/InstallPrompt';
 import Home from './pages/Home';
 import Clock from './pages/Clock';
 import Schedule from './pages/Schedule';
@@ -29,9 +29,6 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <BottomNav />
-      {/* Only render after auth — the fixed-bottom banner was overlapping the
-          Sign In button on the login screen, blocking first-visit login. */}
-      <InstallBanner />
     </div>
   );
 }
@@ -41,6 +38,9 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
+        {/* First-visit install sheet — shows before or after login; dismissible,
+            so it never blocks the Sign In button. */}
+        <InstallPrompt />
       </AuthProvider>
     </BrowserRouter>
   );

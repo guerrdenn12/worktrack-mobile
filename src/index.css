@@ -253,3 +253,6 @@ a { color: inherit; }
   align-items: center;
   justify-content: center;
 }
+
+@keyframes wtFade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes wtUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
