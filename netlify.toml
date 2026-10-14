@@ -19,6 +19,11 @@
     Permissions-Policy = "geolocation=(self), camera=(), microphone=()"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
+    # CSP in REPORT-ONLY mode: browsers log violations to the console but block
+    # nothing, so it cannot break the site. After a clean week with no reports,
+    # rename the key to "Content-Security-Policy" to enforce it.
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' https://app.worktracksmb.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'"
+
 [[headers]]
   for = "/assets/*"
   [headers.values]
