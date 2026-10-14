@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createCompany } from '../utils/api';
+import BrandLogo from './BrandLogo';
 
 const DEMO_KEY = 'WTDEMO2024';
 
@@ -79,7 +80,7 @@ export default function LicenseGate({ children }) {
   return (
     <div style={styles.overlay}>
       <div style={styles.card}>
-        <div style={styles.logo}>WorkTrack</div>
+        <div style={styles.logo} aria-label="WorkTrack"><BrandLogo size={36} fontSize={22} style={{ justifyContent: 'center' }} /></div>
 
         {step === 'license' && (
           <>

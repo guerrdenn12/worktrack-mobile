@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import BrandLogo from './BrandLogo';
 
 // Mobile is an EMPLOYEE-ONLY app. It is not a public/evaluation surface — after
 // a company buys WorkTrack it hands this link to its staff, who sign in with the
@@ -30,9 +31,8 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-header">
-        <div className="login-logo-wrap">
-          <div className="login-logo-icon">📋</div>
-          <div className="login-logo">Work<span>Track</span></div>
+        <div className="login-logo-wrap" aria-label="WorkTrack">
+          <BrandLogo size={44} fontSize={34} />
         </div>
         <p className="login-tagline">Clock in &amp; manage shifts</p>
       </div>
