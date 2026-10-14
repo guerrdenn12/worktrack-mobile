@@ -1,5 +1,8 @@
 // The one WorkTrack logo: the "wt" tile (/favicon.svg) + "Work" ink, "Track" terracotta.
 // Same component as the web app (guerrdenn12/worktrack); keep them in sync.
+// The mark is bundled (hashed /assets/ URL) so browsers never show a stale cached copy.
+import wtMark from '../assets/wt-mark.svg';
+
 // light: white "Work" for dark backgrounds (same mark, readable on photos).
 export default function BrandLogo({ size = 32, fontSize, stacked = false, light = false, style }) {
   const fs = fontSize || Math.round(size * 0.62);
@@ -14,7 +17,7 @@ export default function BrandLogo({ size = 32, fontSize, stacked = false, light 
       }}
     >
       <img
-        src="/favicon.svg"
+        src={wtMark}
         alt=""
         width={size}
         height={size}

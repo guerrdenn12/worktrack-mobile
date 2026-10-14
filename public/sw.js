@@ -1,4 +1,4 @@
-const CACHE = 'worktrack-v1';
+const CACHE = 'worktrack-v2';
 const STATIC = ['/', '/index.html'];
 
 self.addEventListener('install', e => {
