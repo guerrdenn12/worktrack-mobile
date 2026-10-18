@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getTable, setTable, generateId } from '../utils/localStorage';
 import { getCurrentPosition } from '../utils/geolocation';
+import { hasPendingSync } from '../utils/api';
 import { isWithinGeofence } from '../utils/geofence';
 import MobileHeader from '../components/MobileHeader';
 
@@ -19,18 +20,23 @@ function fmtTime(iso) {
 }
 
 export default function Clock() {
-  const { currentEmployee, currentTenant, companyCode } = useAuth();
+  const { currentEmployee, currentTenant } = useAuth();
   const [activeEntry, setActiveEntry] = useState(null);
   const [onBreak, setOnBreak] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [gpsStatus, setGpsStatus] = useState('unknown'); // 'ok' | 'error' | 'unknown'
+  const [gpsStatus, setGpsStatus] = useState('unknown'); // 'ok' | 'warn' | 'error' | 'unknown'
   const [gpsMsg, setGpsMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [todayEntries, setTodayEntries] = useState([]);
+  const [pending, setPending] = useState(hasPendingSync());
+  const [choosingBreak, setChoosingBreak] = useState(false);
 
   useEffect(() => {
     loadTodayEntries();
-    checkActiveEntry();
+    const update = () => setPending(hasPendingSync());
+    window.addEventListener('worktrack-sync', update);
+    const t = setInterval(update, 5000);
+    return () => { window.removeEventListener('worktrack-sync', update); clearInterval(t); };
   }, []);
 
   useEffect(() => {
@@ -39,6 +45,12 @@ export default function Clock() {
     const tick = setInterval(() => setElapsed(Date.now() - start), 1000);
     return () => clearInterval(tick);
   }, [activeEntry, onBreak]);
+
+  // Breaks are stored in their own table (same format as the manager app) so
+  // timesheets and payroll can deduct them.
+  const openBreakFor = (entryId) =>
+    getTable('worktrack_breaks').find(b => b.timeEntryId === entryId && !b.breakEnd) ||
+    null;
 
   const loadTodayEntries = () => {
     const today = new Date().toDateString();
@@ -49,115 +61,136 @@ export default function Clock() {
     );
     setTodayEntries(entries);
     const active = entries.find(e => !e.clockOut);
-    if (active) {
-      setActiveEntry(active);
-      setElapsed(Date.now() - new Date(active.clockIn).getTime());
-      const lastBreak = (active.breaks || []).find(b => !b.end);
-      if (lastBreak) setOnBreak(true);
-    }
-  };
-
-  const checkActiveEntry = () => {
-    const today = new Date().toDateString();
-    const entries = getTable('worktrack_time_entries').filter(e =>
-      e.employeeId === currentEmployee?.id &&
-      e.tenantId === currentTenant?.id &&
-      new Date(e.clockIn).toDateString() === today
-    );
-    const active = entries.find(e => !e.clockOut);
     setActiveEntry(active || null);
+    if (active) {
+      setElapsed(Date.now() - new Date(active.clockIn).getTime());
+      setOnBreak(!!openBreakFor(active.id) || (active.breaks || []).some(b => !b.end));
+    } else {
+      setOnBreak(false);
+    }
   };
 
-  const getGps = async () => {
-    try {
-      const pos = await getCurrentPosition();
-      // Check geofence if tenant has one configured
-      const tenant = getTable('worktrack_tenants').find(t => t.id === currentTenant?.id);
-      if (tenant?.geofence?.lat) {
-        const within = isWithinGeofence(pos, tenant.geofence);
-        if (!within) {
-          setGpsStatus('error');
-          setGpsMsg('Outside work area');
-          return null;
-        }
-      }
-      setGpsStatus('ok');
-      setGpsMsg('Location verified');
-      return pos;
-    } catch (e) {
-      setGpsStatus('error');
-      setGpsMsg('Location unavailable');
-      return null;
+  // The work location the manager assigned to this employee (Settings → Locations).
+  const myLocation = () =>
+    getTable('worktrack_locations').find(l =>
+      l.tenantId === currentTenant?.id && (l.assignedEmployees || []).includes(currentEmployee?.id)
+    ) || null;
+
+  // Capture GPS and check it against the assigned location. Never blocks
+  // clocking in or out — an off-site punch is recorded and flagged for the manager.
+  const captureLocation = async () => {
+    const pos = await getCurrentPosition();
+    const loc = myLocation();
+    let within = null;
+    if (pos && loc && loc.latitude != null && loc.longitude != null) {
+      within = isWithinGeofence(pos.latitude, pos.longitude, loc.latitude, loc.longitude, loc.radiusMeters || 150);
     }
+    if (!pos) { setGpsStatus('error'); setGpsMsg('Location unavailable — your manager will see this punch without GPS'); }
+    else if (within === false) { setGpsStatus('warn'); setGpsMsg('Outside your work area — your manager will see this punch as off-site'); }
+    else { setGpsStatus('ok'); setGpsMsg(within ? 'At your work location' : 'Location recorded'); }
+    return { pos, loc, within };
   };
 
   const handleClockIn = async () => {
+    if (activeEntry) return;
     setLoading(true);
-    const pos = await getGps();
+    const { pos, loc, within } = await captureLocation();
 
     const entry = {
-      id: generateId('te'),
+      id: generateId('time'),
       employeeId: currentEmployee.id,
       tenantId: currentTenant.id,
       clockIn: new Date().toISOString(),
       clockOut: null,
-      breaks: [],
-      lat: pos?.latitude,
-      lng: pos?.longitude,
+      projectId: null,
+      taskDescription: null,
+      isBillable: false,
+      billingRate: 0,
+      billingAmount: 0,
+      isInvoiced: false,
+      invoiceId: null,
+      clockInLat: pos?.latitude ?? null,
+      clockInLng: pos?.longitude ?? null,
+      clockInWithinGeofence: within,
+      clockOutLat: null,
+      clockOutLng: null,
+      clockOutWithinGeofence: null,
+      locationId: loc?.id || null,
+      source: 'mobile',
     };
 
     const entries = getTable('worktrack_time_entries');
     entries.push(entry);
     setTable('worktrack_time_entries', entries);
-    setActiveEntry(entry);
     setElapsed(0);
     loadTodayEntries();
     setLoading(false);
+  };
+
+  const endOpenBreak = (entryId, when) => {
+    const breaks = getTable('worktrack_breaks');
+    const idx = breaks.findIndex(b => b.timeEntryId === entryId && !b.breakEnd);
+    if (idx !== -1) {
+      breaks[idx] = { ...breaks[idx], breakEnd: when };
+      setTable('worktrack_breaks', breaks);
+    }
   };
 
   const handleClockOut = async () => {
     if (!activeEntry) return;
     setLoading(true);
-    await getGps();
+    const { pos, within } = await captureLocation();
+    const now = new Date().toISOString();
+    endOpenBreak(activeEntry.id, now);
 
     const entries = getTable('worktrack_time_entries');
     const idx = entries.findIndex(e => e.id === activeEntry.id);
     if (idx !== -1) {
-      entries[idx].clockOut = new Date().toISOString();
-      if (onBreak) {
-        const breaks = entries[idx].breaks || [];
-        const openBreak = breaks.findIndex(b => !b.end);
-        if (openBreak !== -1) breaks[openBreak].end = new Date().toISOString();
-        entries[idx].breaks = breaks;
-      }
+      entries[idx] = {
+        ...entries[idx],
+        clockOut: now,
+        clockOutLat: pos?.latitude ?? null,
+        clockOutLng: pos?.longitude ?? null,
+        clockOutWithinGeofence: within,
+      };
       setTable('worktrack_time_entries', entries);
     }
 
-    setActiveEntry(null);
-    setOnBreak(false);
     setElapsed(0);
     loadTodayEntries();
     setLoading(false);
   };
 
-  const handleBreak = () => {
-    if (!activeEntry) return;
-    const entries = getTable('worktrack_time_entries');
-    const idx = entries.findIndex(e => e.id === activeEntry.id);
-    if (idx === -1) return;
+  // Same break types as the manager app; unpaid and meal breaks are deducted
+  // from paid hours on timesheets and payroll.
+  const BREAK_TYPES = [
+    { value: 'paid', label: 'Paid break' },
+    { value: 'unpaid', label: 'Unpaid break' },
+    { value: 'meal', label: 'Meal break' },
+  ];
 
-    const breaks = entries[idx].breaks || [];
+  const handleBreak = (breakType) => {
+    if (!activeEntry) return;
+    const now = new Date().toISOString();
     if (!onBreak) {
-      breaks.push({ id: generateId('brk'), start: new Date().toISOString(), end: null });
+      if (!breakType) { setChoosingBreak(true); return; }
+      setChoosingBreak(false);
+      const breaks = getTable('worktrack_breaks');
+      breaks.push({
+        id: generateId('brk'),
+        timeEntryId: activeEntry.id,
+        tenantId: currentTenant.id,
+        employeeId: currentEmployee.id,
+        breakStart: now,
+        breakEnd: null,
+        breakType,
+      });
+      setTable('worktrack_breaks', breaks);
       setOnBreak(true);
     } else {
-      const openBreak = breaks.findIndex(b => !b.end);
-      if (openBreak !== -1) breaks[openBreak].end = new Date().toISOString();
+      endOpenBreak(activeEntry.id, now);
       setOnBreak(false);
     }
-    entries[idx].breaks = breaks;
-    setTable('worktrack_time_entries', entries);
-    loadTodayEntries();
   };
 
   const isClockedIn = !!activeEntry;
@@ -168,9 +201,16 @@ export default function Clock() {
 
       <div style={styles.content}>
         {/* GPS status */}
-        <div style={{ ...styles.gpsBar, background: gpsStatus === 'ok' ? '#f0fdf4' : gpsStatus === 'error' ? '#fef2f2' : '#f7f8fc' }}>
-          <span style={{ fontSize: 12, color: gpsStatus === 'ok' ? '#16a34a' : gpsStatus === 'error' ? '#dc2626' : '#888' }}>
-            {gpsStatus === 'ok' ? '📍 ' : gpsStatus === 'error' ? '⚠️ ' : '📍 '}
+        {pending && (
+          <div style={{ ...styles.gpsBar, background: '#fff7ed', border: '1px solid #fed7aa' }}>
+            <span style={{ fontSize: 12, color: '#9a3412' }}>
+              ⏳ Saved on this phone — will send to your manager automatically when you're back online.
+            </span>
+          </div>
+        )}
+        <div style={{ ...styles.gpsBar, background: gpsStatus === 'ok' ? '#f0fdf4' : gpsStatus === 'error' ? '#fef2f2' : gpsStatus === 'warn' ? '#fffbeb' : '#f7f8fc' }}>
+          <span style={{ fontSize: 12, color: gpsStatus === 'ok' ? '#16a34a' : gpsStatus === 'error' ? '#dc2626' : gpsStatus === 'warn' ? '#b45309' : '#888' }}>
+            {gpsStatus === 'ok' ? '📍 ' : gpsStatus === 'error' || gpsStatus === 'warn' ? '⚠️ ' : '📍 '}
             {gpsMsg || 'Location will be checked on clock in/out'}
           </span>
         </div>
@@ -199,10 +239,18 @@ export default function Clock() {
         </button>
 
         {/* Break button */}
-        {isClockedIn && (
-          <button style={{ ...styles.breakBtn, ...(onBreak ? styles.breakBtnActive : {}) }} onClick={handleBreak}>
+        {isClockedIn && !choosingBreak && (
+          <button style={{ ...styles.breakBtn, ...(onBreak ? styles.breakBtnActive : {}) }} onClick={() => handleBreak()}>
             {onBreak ? 'End Break' : 'Start Break'}
           </button>
+        )}
+        {isClockedIn && choosingBreak && !onBreak && (
+          <div style={{ display: 'grid', gap: 8, marginTop: 4 }}>
+            {BREAK_TYPES.map(t => (
+              <button key={t.value} style={styles.breakBtn} onClick={() => handleBreak(t.value)}>{t.label}</button>
+            ))}
+            <button style={{ ...styles.breakBtn, background: 'transparent', border: 'none', color: '#888' }} onClick={() => setChoosingBreak(false)}>Cancel</button>
+          </div>
         )}
 
         {/* Today's entries */}

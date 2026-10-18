@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { getTable, setTable, generateId } from '../utils/localStorage';
-import { serverLogin, pullFromServer, pushToServer, clearSessionToken } from '../utils/api';
+import { serverLogin, pullFromServer, pushToServer, clearSessionToken, hasPendingSync } from '../utils/api';
 import { supabase } from '../utils/supabase';
 
 const AuthContext = createContext(null);
@@ -164,7 +164,22 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    if (companyCode) pushToServer(companyCode);
+    // Deliver any unsynced clock-ins before signing out. Phones are often
+    // shared, so after a successful sync the company data is wiped from the
+    // device — the next person can't see it or accidentally discard it.
+    const synced = companyCode ? await pushToServer(companyCode) : true;
+    if (!synced && hasPendingSync()) {
+      const leave = window.confirm(
+        "Some of your clock-ins haven't reached your manager yet (no connection).\n\n" +
+        'Stay signed in and they will send automatically. Sign out anyway and lose them?'
+      );
+      if (!leave) return;
+    }
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('worktrack_') && !['worktrack_license', 'worktrack_last_company', 'worktrack_demo'].includes(k))
+        .forEach(k => localStorage.removeItem(k));
+    } catch { /* ignore */ }
     if (supabase && (authMode === 'email' || authMode === 'sso')) {
       try { await supabase.auth.signOut(); } catch (e) {}
     }

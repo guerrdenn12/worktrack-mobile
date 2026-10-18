@@ -12,7 +12,19 @@ const TABLE_MAP = {
   'worktrack_project_assignments': 'project_assignments',
   'worktrack_invoices': 'invoices',
   'worktrack_invoice_line_items': 'invoice_line_items',
+  'worktrack_breaks': 'breaks',
+  'worktrack_locations': 'locations',
 };
+
+// Unsynced-change tracking (see utils/localStorage.js).
+const PENDING_KEY = 'worktrack_sync_pending';
+const TOMBSTONE_KEY = 'worktrack_tombstones';
+export function hasPendingSync() {
+  try { return !!localStorage.getItem(PENDING_KEY); } catch { return false; }
+}
+function notifySync() {
+  try { window.dispatchEvent(new Event('worktrack-sync')); } catch { /* ignore */ }
+}
 
 const REVERSE_MAP = Object.fromEntries(
   Object.entries(TABLE_MAP).map(([k, v]) => [v, k])
@@ -57,6 +69,13 @@ export async function pullFromServer(companyCode) {
   const code = companyCode || getCompanyCode();
   if (!code) return false;
 
+  // Never overwrite unsynced local changes (e.g. a clock-in made offline):
+  // push them first, and if that fails keep the local copy untouched.
+  if (hasPendingSync()) {
+    const pushed = await pushToServer(code);
+    if (!pushed) return false;
+  }
+
   try {
     const res = await fetch(`${API_BASE}/api/company/data?code=${code}`, {
       headers: authHeaders(),
@@ -91,15 +110,19 @@ export async function pushToServer(companyCode, { keepalive = false } = {}) {
   if (!code) return false;
 
   try {
+    const pendingAtStart = localStorage.getItem(PENDING_KEY);
+    const tombstones = JSON.parse(localStorage.getItem(TOMBSTONE_KEY) || '{}');
     const data = {};
+    const deleted = {};
     Object.entries(TABLE_MAP).forEach(([localKey, serverKey]) => {
       data[serverKey] = JSON.parse(localStorage.getItem(localKey) || '[]');
+      if (Array.isArray(tombstones[localKey]) && tombstones[localKey].length) deleted[serverKey] = tombstones[localKey];
     });
 
     const res = await fetch(`${API_BASE}/api/company/sync`, {
       method: 'POST',
       headers: authHeaders(),
-      body: JSON.stringify({ companyCode: code, data }),
+      body: JSON.stringify({ companyCode: code, data, deleted }),
       // keepalive lets the request complete even if the page is unloading
       keepalive,
     });
@@ -110,7 +133,22 @@ export async function pushToServer(companyCode, { keepalive = false } = {}) {
     }
 
     const result = await res.json();
-    return result.ok;
+    if (result.ok) {
+      // Server confirmed: drop the tombstones we sent, and clear the unsynced
+      // flag unless something changed locally while the request was in flight.
+      try {
+        const t = JSON.parse(localStorage.getItem(TOMBSTONE_KEY) || '{}');
+        for (const [localKey, ids] of Object.entries(tombstones)) {
+          const sent = new Set(ids);
+          t[localKey] = (t[localKey] || []).filter(id => !sent.has(id));
+          if (!t[localKey].length) delete t[localKey];
+        }
+        localStorage.setItem(TOMBSTONE_KEY, JSON.stringify(t));
+        if (localStorage.getItem(PENDING_KEY) === pendingAtStart) localStorage.removeItem(PENDING_KEY);
+      } catch { /* ignore */ }
+      notifySync();
+    }
+    return !!result.ok;
   } catch (err) {
     console.warn('Failed to push to server:', err);
     return false;
@@ -187,4 +225,20 @@ export async function createCompany(licenseKey, companyName) {
   } catch (err) {
     return { ok: false, error: 'Unable to connect. Please check your internet.' };
   }
+}
+
+// Retry unsynced changes until the server confirms them: when the connection
+// returns, when the app comes back to the foreground, and every 30s while
+// anything is pending. Clock-ins made with no signal are kept on the device
+// (pullFromServer won't overwrite them) and delivered as soon as possible.
+if (typeof window !== 'undefined' && !window.__wtRetryBound) {
+  window.__wtRetryBound = true;
+  const retry = () => {
+    if (hasPendingSync() && navigator.onLine !== false && !syncTimer) pushToServer();
+  };
+  window.addEventListener('online', retry);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') retry();
+  });
+  setInterval(retry, 30000);
 }
