@@ -59,6 +59,24 @@ export function getCurrentSessionToken() {
   return getSessionToken();
 }
 
+// Change a PIN on the server (stored hashed). Used by the forced PIN change.
+export async function setEmployeePin(employeeId, newPin, currentPin) {
+  const code = getCompanyCode();
+  if (!code) return { ok: false, error: 'Not signed in' };
+  try {
+    const res = await fetch(`${API_BASE}/api/company/set-pin`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ companyCode: code, employeeId, newPin: String(newPin), ...(currentPin !== undefined ? { currentPin: String(currentPin) } : {}) }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return { ok: false, error: data.error || 'Could not update PIN. Try again.' };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Unable to connect. Please check your internet.' };
+  }
+}
+
 export function clearSessionToken() {
   localStorage.removeItem('worktrack_session_token');
 }

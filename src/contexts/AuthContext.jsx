@@ -188,6 +188,18 @@ export function AuthProvider({ children }) {
     clearAuthState();
   };
 
+  // After the server accepts a new PIN, drop the forced-change flags locally.
+  const clearPinChangeFlag = () => {
+    if (!currentEmployee) return;
+    const updated = { ...currentEmployee, mustChangePin: false, pinUpgradeRequired: false };
+    setCurrentEmployee(updated);
+    try {
+      const session = JSON.parse(localStorage.getItem('worktrack_session') || '{}');
+      session.employee = updated;
+      localStorage.setItem('worktrack_session', JSON.stringify(session));
+    } catch { /* ignore */ }
+  };
+
   const getEmployees = () => {
     if (!currentTenant) return [];
     const employees = getTable('worktrack_employees').filter(e => e.tenantId === currentTenant.id);
@@ -213,7 +225,7 @@ export function AuthProvider({ children }) {
       currentTenant, currentEmployee, isAuthenticated,
       companyCode, companyName, authMode,
       login, loginWithEmail, loginWithGoogle,
-      logout, getEmployees, getAllEmployees,
+      logout, getEmployees, getAllEmployees, clearPinChangeFlag,
     }}>
       {children}
     </AuthContext.Provider>

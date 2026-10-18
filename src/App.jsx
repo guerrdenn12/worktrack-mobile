@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
+import ForcePinChange from './components/ForcePinChange';
 import BottomNav from './components/BottomNav';
 import InstallPrompt from './components/InstallPrompt';
 import Home from './pages/Home';
@@ -16,6 +17,7 @@ function AppRoutes() {
   const isManager = role === 'admin' || role === 'manager';
 
   if (!isAuthenticated) return <Login />;
+  if (currentEmployee?.mustChangePin) return <ForcePinChange />;
 
   return (
     <div style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom))' }}>
