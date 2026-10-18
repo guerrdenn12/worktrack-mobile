@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { getTable, setTable, generateId } from '../utils/localStorage';
-import { serverLogin, pullFromServer, pushToServer, clearSessionToken, hasPendingSync } from '../utils/api';
+import { serverLogin, pullFromServer, pushToServer, clearSessionToken, hasPendingSync, revokeSession, getCurrentSessionToken } from '../utils/api';
 import { supabase } from '../utils/supabase';
 
 const AuthContext = createContext(null);
@@ -175,6 +175,8 @@ export function AuthProvider({ children }) {
       );
       if (!leave) return;
     }
+    // Revoke this phone's token on the server so it can't be reused.
+    if (companyCode) revokeSession(companyCode, getCurrentSessionToken());
     try {
       Object.keys(localStorage)
         .filter(k => k.startsWith('worktrack_') && !['worktrack_license', 'worktrack_last_company', 'worktrack_demo'].includes(k))

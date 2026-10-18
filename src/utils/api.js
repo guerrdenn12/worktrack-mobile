@@ -44,6 +44,21 @@ function setSessionToken(token) {
   }
 }
 
+// Ask the server to revoke this phone's session token (best effort).
+export function revokeSession(companyCode, token) {
+  if (!companyCode || !token) return Promise.resolve();
+  return fetch(`${API_BASE}/api/company/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ companyCode }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
+export function getCurrentSessionToken() {
+  return getSessionToken();
+}
+
 export function clearSessionToken() {
   localStorage.removeItem('worktrack_session_token');
 }
